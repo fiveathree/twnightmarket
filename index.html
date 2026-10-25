@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>台幣夜市遊戲街</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one narrow column like walking down a night-market lane — purse on top, stall signs, then the stall itself. Single deliberate night look. */
+:root{
+  --night:#191330; --stall:#251c42; --stall-2:#30255a; --line:#4b3b78;
+  --lantern:#e8483a; --amber:#f4b33d; --paper:#f6ead2; --muted:#b4a6d4; --ok:#5fd0a0;
+  --f-display:"LXGW WenKai TC","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-num:"Bungee","Noto Sans TC",system-ui,sans-serif;
+  color-scheme:dark;
+}
+body{margin:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{background:var(--night);color:var(--paper)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:560px;margin:0 auto;padding-block:14px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-weight:700;font-size:28px;margin:0;letter-spacing:.04em;color:var(--amber);text-shadow:0 0 14px rgba(244,179,61,.45);text-wrap:balance}
+h1 small{display:block;font-size:13px;color:var(--muted);font-family:var(--f-body);font-weight:400;letter-spacing:.08em;text-shadow:none}
+.purse{display:flex;gap:8px}
+.chip{display:flex;align-items:baseline;gap:6px;background:var(--stall);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-variant-numeric:tabular-nums}
+.chip b{font-family:var(--f-num);font-weight:400;font-size:18px}
+.chip.nt b{color:var(--amber)} .chip.tk b{color:var(--ok)}
+.chip span{font-size:12px;color:var(--muted)}
+nav.stalls{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+nav button{font:inherit;color:var(--paper);background:var(--stall);border:1px solid var(--line);border-radius:10px;padding:10px 6px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .nm{font-family:var(--f-display);font-weight:700;font-size:17px}
+nav button .pr{font-size:12px;color:var(--muted)}
+nav button[aria-pressed="true"]{background:var(--lantern);border-color:var(--lantern)}
+nav button[aria-pressed="true"] .pr{color:var(--paper)}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.stage-head{display:flex;flex-direction:column;gap:2px}
+.stage-head h2{font-family:var(--f-display);font-size:22px;margin:0}
+.stage-head p{margin:0;color:var(--muted);font-size:13px}
+#hud{font-family:var(--f-body);font-weight:700;color:var(--amber);font-variant-numeric:tabular-nums;min-height:1.5em}
+.board{position:relative;width:100%;max-width:440px;margin:0 auto;border-radius:14px;overflow:hidden;border:2px solid var(--line)}
+canvas{display:block;width:100%;aspect-ratio:400/520;max-width:100%;touch-action:none;cursor:crosshair}
+#overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(25,19,48,.78);text-align:center;padding:24px}
+#overlay[hidden]{display:none!important}
+#overlay h3{font-family:var(--f-display);font-size:26px;margin:0;color:var(--amber)}
+#overlay p{margin:0;max-width:30ch;color:var(--paper)}
+.btn{font:inherit;font-weight:700;border:0;border-radius:999px;padding:11px 22px;cursor:pointer;background:var(--lantern);color:var(--paper);box-shadow:0 0 18px rgba(232,72,58,.45)}
+.btn.ghost{background:var(--stall-2);box-shadow:none;border:1px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+/* cooking */
+#cook,#shop{display:flex;flex-direction:column;gap:12px;background:var(--stall);border:1px solid var(--line);border-radius:14px;padding:14px}
+.cookbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-variant-numeric:tabular-nums;font-weight:700}
+.queue{display:flex;gap:6px;flex-wrap:wrap;min-height:44px}
+.cust{background:var(--stall-2);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px;min-width:76px;display:flex;flex-direction:column;gap:3px}
+.cust.first{border-color:var(--amber)}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok)}
+.order{background:var(--paper);color:#2b1d14;border-radius:10px;padding:12px 14px;min-height:82px;display:flex;flex-direction:column;gap:6px}
+.order h4{margin:0;font-family:var(--f-display);font-size:20px;display:flex;justify-content:space-between}
+.order h4 span{font-family:var(--f-num);font-weight:400;font-size:16px;color:var(--lantern)}
+.need{display:flex;gap:6px;flex-wrap:wrap}
+.need span{border:1px dashed #a08a70;border-radius:6px;padding:1px 8px;font-size:13px}
+.need span.got{background:#2b1d14;color:var(--paper);border-style:solid;border-color:#2b1d14}
+.order.bad{animation:shake .3s}
+.order.good{outline:3px solid var(--ok)}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.trayline{font-size:13px;color:var(--muted);min-height:1.5em}
+.ing{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.ing button{font:inherit;font-size:14px;padding:10px 2px;border-radius:8px;border:1px solid var(--line);background:var(--stall-2);color:var(--paper);cursor:pointer}
+.ing button:active{background:var(--lantern)}
+.acts{display:flex;gap:8px}
+.acts .btn{flex:1}
+/* shop */
+.prizes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.prize{background:var(--stall-2);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.prize .em{font-size:38px;line-height:1.1}
+.prize .cost{font-size:13px;color:var(--ok);font-weight:700}
+.prize .own{font-size:12px;color:var(--muted)}
+.prize .btn{padding:7px 16px;font-size:14px}
+.shelf{font-size:30px;letter-spacing:4px;min-height:44px;word-break:break-all}
+.log{margin:0;text-align:center;color:var(--muted);font-size:13px;min-height:1.5em}
+footer{display:flex;justify-content:center}
+@media (max-width:400px){.ing{grid-template-columns:repeat(3,minmax(0,1fr))}h1{font-size:24px}}
+@media (prefers-reduced-motion:reduce){.order.bad{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>台幣夜市遊戲街<small>射氣球・投籃・套圈圈・開攤賺錢</small></h1>
+    <div class="purse">
+      <div class="chip nt"><span>NT$</span><b id="nt">500</b></div>
+      <div class="chip tk"><span>獎券</span><b id="tk">0</b></div>
+    </div>
+  </header>
+
+  <nav class="stalls" id="stalls">
+    <button data-g="shoot"><span class="nm">射氣球</span><span class="pr">NT$50 一局</span></button>
+    <button data-g="hoop"><span class="nm">投籃</span><span class="pr">NT$50 十球</span></button>
+    <button data-g="ring"><span class="nm">套圈圈</span><span class="pr">NT$50 八個圈</span></button>
+    <button data-g="cook"><span class="nm">開攤整嘢食</span><span class="pr">免費・賺台幣</span></button>
+    <button data-g="shop"><span class="nm">換獎品</span><span class="pr">用獎券換</span></button>
+  </nav>
+
+  <section class="stage-head">
+    <h2 id="sTitle"></h2>
+    <p id="sRule"></p>
+    <div id="hud"></div>
+  </section>
+
+  <div class="board" id="board">
+    <canvas id="cv" width="800" height="1040"></canvas>
+    <div id="overlay"><h3 id="oTitle"></h3><p id="oText"></p><button class="btn" id="oBtn"></button></div>
+  </div>
+
+  <div id="cook" hidden>
+    <div class="cookbar"><span id="cTime">營業時間 75 秒</span><span id="cEarn">今晚營收 NT$0</span><button class="btn" id="cStart">開檔</button></div>
+    <div class="queue" id="queue"></div>
+    <div class="order" id="order"></div>
+    <div class="trayline" id="tray">托盤：空</div>
+    <div class="ing" id="ing"></div>
+    <div class="acts"><button class="btn" id="serve">出餐</button><button class="btn ghost" id="dump">倒掉重整</button></div>
+  </div>
+
+  <div id="shop" hidden>
+    <div class="prizes" id="prizes"></div>
+    <div><div style="font-size:13px;color:var(--muted)">我的獎品架</div><div class="shelf" id="shelf"></div></div>
+  </div>
+
+  <p class="log" id="log"></p>
+  <footer><button class="btn ghost" id="reset">重新開始（NT$500）</button></footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const W=400,H=520,cv=$('cv'),ctx=cv.getContext('2d');ctx.scale(2,2);
+let S={nt:500,tk:0,prizes:{}};
+try{const s=JSON.parse(localStorage.getItem('nightmarket'));if(s&&typeof s.nt==='number')S=s;}catch(e){}
+function save(){try{localStorage.setItem('nightmarket',JSON.stringify(S))}catch(e){}}
+function purse(){$('nt').textContent=S.nt;$('tk').textContent=S.tk}
+function hud(t){$('hud').textContent=t}
+function log(t){$('log').textContent=t}
+const rand=(a,b)=>a+Math.random()*(b-a), hyp=Math.hypot, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function lights(c,t){for(let i=0;i<11;i++){const x=18+i*36.4,y=18+Math.sin(i*1.3)*4;c.strokeStyle='#4b3b78';c.lineWidth=1;if(i){c.beginPath();c.moveTo(x-36.4,18+Math.sin((i-1)*1.3)*4);c.quadraticCurveTo(x-18,30,x,y);c.stroke()}
+ const on=(Math.floor(t*2)+i)%3!==0;c.fillStyle=i%2?'#f4b33d':'#e8483a';c.globalAlpha=on?1:.45;c.shadowColor=c.fillStyle;c.shadowBlur=on?12:0;c.beginPath();c.arc(x,y+6,5,0,7);c.fill();c.shadowBlur=0;c.globalAlpha=1}}
+
+/* ---------- 射氣球 ---------- */
+const Shoot={name:'射氣球',fee:50,rule:'點擊氣球射擊，準星會晃，要預判。12 粒子彈，普通氣球 1 張獎券，金色★ 3 張。',
+ init(){this.b=[];const cols=['#e8483a','#4fa3e8','#5fd0a0','#c46be0','#f08a3c'];
+  for(let r=0;r<4;r++)for(let c=0;c<6;c++)this.b.push({x:58+c*57,y:92+r*64,r:21,col:cols[(r*6+c*7)%5],gold:Math.random()<.13,alive:1,ph:Math.random()*6});
+  this.shots=12;this.pts=0;this.hits=0;this.t=0;this.aim={x:200,y:220};this.fx=[];this.done=null;this.show()},
+ show(){hud(`子彈 ${this.shots}　獎券 ${this.pts}`)},
+ sway(){return{x:Math.sin(this.t*2.1)*10+Math.sin(this.t*5.3)*3,y:Math.cos(this.t*1.6)*9}},
+ pos(b){return{x:b.x+Math.sin(this.t*.8)*14,y:b.y+Math.sin(this.t*2+b.ph)*4}},
+ update(dt){this.t+=dt;this.fx=this.fx.filter(f=>(f.a-=dt)>0);
+  if(this.done!==null&&running){this.done-=dt;if(this.done<=0){this.done=null;
+   const all=this.b.every(b=>!b.alive);endGame(this.pts,`射爆 ${this.hits} 個氣球，得 ${this.pts} 張獎券${all?'，全清！':''}`)}}},
+ down(p){if(this.shots<=0||this.done!==null)return;this.aim=p;const s=this.sway(),hx=p.x+s.x,hy=p.y+s.y;this.shots--;
+  let hit=null;for(const b of this.b){if(!b.alive)continue;const q=this.pos(b);if(hyp(hx-q.x,hy-q.y)<b.r){hit=b;break}}
+  if(hit){hit.alive=0;this.hits++;this.pts+=hit.gold?3:1;const q=this.pos(hit);this.fx.push({k:'pop',x:q.x,y:q.y,c:hit.gold?'#f4b33d':hit.col,a:.4})}
+  else this.fx.push({k:'hole',x:hx,y:hy,a:1.5});
+  this.show();if(this.shots===0||this.b.every(b=>!b.alive))this.done=.7},
+ move(p){this.aim=p},
+ draw(c){c.fillStyle='#211837';c.fillRect(0,0,W,H);lights(c,this.t);
+  c.fillStyle='#3a2c5c';rr(c,16,46,368,316,12);c.fill();
+  c.fillStyle='#4b3b78';for(let y=60;y<356;y+=18)for(let x=30;x<380;x+=18){c.beginPath();c.arc(x,y,1.4,0,7);c.fill()}
+  for(const b of this.b){if(!b.alive)continue;const q=this.pos(b);
+   c.strokeStyle='#d8cfe8';c.lineWidth=1;c.beginPath();c.moveTo(q.x,q.y+b.r);c.quadraticCurveTo(q.x+4,q.y+b.r+8,q.x,q.y+b.r+16);c.stroke();
+   c.fillStyle=b.gold?'#f4b33d':b.col;c.beginPath();c.ellipse(q.x,q.y,b.r*.86,b.r,0,0,7);c.fill();
+   c.beginPath();c.moveTo(q.x-4,q.y+b.r+4);c.lineTo(q.x+4,q.y+b.r+4);c.lineTo(q.x,q.y+b.r-1);c.fill();
+   c.fillStyle='rgba(255,255,255,.45)';c.beginPath();c.ellipse(q.x-6,q.y-8,4,7,-.5,0,7);c.fill();
+   if(b.gold){c.fillStyle='#7a3b00';c.font='bold 14px sans-serif';c.textAlign='center';c.fillText('★',q.x,q.y+5)}}
+  for(const f of this.fx){if(f.k==='pop'){c.strokeStyle=f.c;c.lineWidth=3;const k=(.4-f.a)*90+8;for(let i=0;i<8;i++){const a=i*Math.PI/4;c.beginPath();c.moveTo(f.x+Math.cos(a)*k*.5,f.y+Math.sin(a)*k*.5);c.lineTo(f.x+Math.cos(a)*k,f.y+Math.sin(a)*k);c.stroke()}}
+   else{c.fillStyle=`rgba(10,6,20,${Math.min(1,f.a)})`;c.beginPath();c.arc(f.x,f.y,3,0,7);c.fill()}}
+  c.fillStyle='#5b2620';c.fillRect(0,420,W,100);c.fillStyle='#7a3328';c.fillRect(0,420,W,10);
+  c.fillStyle='#f6ead2';c.font='bold 15px "Noto Sans TC",sans-serif';c.textAlign='left';c.fillText('子彈',20,462);
+  for(let i=0;i<12;i++){c.fillStyle=i<this.shots?'#f4b33d':'#3d1a15';c.beginPath();c.arc(70+i*24,457,7,0,7);c.fill()}
+  c.fillStyle='#b4a6d4';c.font='13px "Noto Sans TC",sans-serif';c.fillText('射中：普通 1 張　金色★ 3 張',20,495);
+  if(running){const s=this.sway(),x=this.aim.x+s.x,y=this.aim.y+s.y;c.strokeStyle='#f6ead2';c.lineWidth=2;c.beginPath();c.arc(x,y,14,0,7);c.stroke();
+   c.beginPath();c.moveTo(x-22,y);c.lineTo(x-8,y);c.moveTo(x+8,y);c.lineTo(x+22,y);c.moveTo(x,y-22);c.lineTo(x,y-8);c.moveTo(x,y+8);c.lineTo(x,y+22);c.stroke();
+   c.fillStyle='#e8483a';c.beginPath();c.arc(x,y,2.5,0,7);c.fill()}}
+};
+
+/* ---------- 投籃 ---------- */
+const RIM_L={x:286,y:200},RIM_R={x:344,y:200},BOARD=356,G_=900,FLOOR=500,BR=15;
+const Hoop={name:'投籃',fee:50,rule:'喺畫面任何位置按住向後拉（好似彈叉咁），放手就射。10 球，入波 1 張獎券，空心 2 張。',
+ init(){this.balls=10;this.made=0;this.pts=0;this.t=0;this.msg=null;this.drag=null;this.over=null;this.reset();this.show()},
+ show(){hud(`剩 ${this.balls} 球　入咗 ${this.made}　獎券 ${this.pts}`)},
+ reset(){this.ball={x:rand(55,150),y:rand(390,455),vx:0,vy:0,fly:false,touched:false,scored:false,tm:0}},
+ vel(p){const dx=this.drag.x-p.x,dy=this.drag.y-p.y,l=Math.min(170,hyp(dx,dy));if(l<8)return null;const sp=l*4.6,n=hyp(dx,dy);return{vx:dx/n*sp,vy:dy/n*sp}},
+ down(p){if(this.ball.fly||this.balls<=0||this.over!==null)return;this.drag={x:p.x,y:p.y,cur:p}},
+ move(p){if(this.drag)this.drag.cur=p},
+ up(p){if(!this.drag)return;const v=this.vel(p);this.drag=null;if(!v)return;Object.assign(this.ball,{vx:v.vx,vy:v.vy,fly:true});this.balls--;this.show()},
+ update(dt){this.t+=dt;if(this.msg){this.msg.a-=dt;if(this.msg.a<=0)this.msg=null}
+  if(this.over!==null&&running){this.over-=dt;if(this.over<=0){this.over=null;endGame(this.pts,`10 球入咗 ${this.made} 球，得 ${this.pts} 張獎券`)}return}
+  const b=this.ball;if(!b.fly)return;b.tm+=dt;const n=4,h=dt/n;
+  for(let s=0;s<n;s++){const py=b.y;b.vy+=G_*h;b.x+=b.vx*h;b.y+=b.vy*h;
+   for(const P of [RIM_L,RIM_R]){const dx=b.x-P.x,dy=b.y-P.y,d=hyp(dx,dy);if(d<BR+3&&d>0){const nx=dx/d,ny=dy/d;b.x=P.x+nx*(BR+3);b.y=P.y+ny*(BR+3);const vn=b.vx*nx+b.vy*ny;if(vn<0){b.vx-=1.5*vn*nx;b.vy-=1.5*vn*ny;b.vx*=.92;b.vy*=.92}b.touched=true}}
+   if(b.x+BR>BOARD&&b.x<BOARD+12&&b.y>105&&b.y<220&&b.vx>0){b.x=BOARD-BR;b.vx*=-.6;b.touched=true}
+   if(!b.scored&&py<RIM_L.y&&b.y>=RIM_L.y&&b.vy>0&&b.x>RIM_L.x+3&&b.x<RIM_R.x-3){b.scored=true;this.made++;const g=b.touched?1:2;this.pts+=g;this.msg={t:b.touched?'入波！+1':'空心！+2',a:1.1};this.show()}
+   if(b.y+BR>FLOOR){b.y=FLOOR-BR;b.vy*=-.5;b.vx*=.8}
+   if(b.x<BR){b.x=BR;b.vx*=-.6}}
+  if(b.tm>3.2||b.x>W+40){if(this.balls<=0)this.over=.6;else this.reset()}},
+ draw(c){c.fillStyle='#211837';c.fillRect(0,0,W,H);lights(c,this.t);
+  c.fillStyle='#2b2050';for(let i=0;i<6;i++){c.fillRect(i*70,60,2,440)}
+  c.fillStyle='#4a3424';c.fillRect(0,FLOOR,W,H-FLOOR);c.fillStyle='#5c4230';c.fillRect(0,FLOOR,W,4);
+  c.fillStyle='#e9e2f2';c.fillRect(BOARD,100,10,124);c.fillStyle='#8b7fa8';c.fillRect(BOARD+10,150,34,8);c.fillRect(BOARD+34,150,8,350);
+  c.strokeStyle='#e8483a';c.lineWidth=2;c.strokeRect(BOARD+1,160,6,38);
+  const b=this.ball;
+  if(this.drag&&this.drag.cur){const v=this.vel(this.drag.cur);c.setLineDash([4,5]);c.strokeStyle='#b4a6d4';c.lineWidth=2;c.beginPath();c.moveTo(this.drag.x,this.drag.y);c.lineTo(this.drag.cur.x,this.drag.cur.y);c.stroke();c.setLineDash([]);
+   if(v){c.fillStyle='#f4b33d';for(let i=1;i<=7;i++){const t=i*.045;c.globalAlpha=1-i*.11;c.beginPath();c.arc(b.x+v.vx*t,b.y+v.vy*t+.5*G_*t*t,3,0,7);c.fill()}c.globalAlpha=1}}
+  c.fillStyle='#f08a3c';c.beginPath();c.arc(b.x,b.y,BR,0,7);c.fill();c.strokeStyle='#5a2a10';c.lineWidth=1.5;c.beginPath();c.arc(b.x,b.y,BR,0,7);c.moveTo(b.x-BR,b.y);c.lineTo(b.x+BR,b.y);c.moveTo(b.x,b.y-BR);c.lineTo(b.x,b.y+BR);c.stroke();
+  c.strokeStyle='#e9e2f2';c.lineWidth=1.2;for(let i=0;i<=5;i++){const x1=RIM_L.x+i*(RIM_R.x-RIM_L.x)/5,x2=296+i*38/5;c.beginPath();c.moveTo(x1,RIM_L.y);c.lineTo(x2,244);c.stroke()}
+  for(const y of [215,230]){c.beginPath();c.moveTo(290,y);c.lineTo(340,y);c.stroke()}
+  c.strokeStyle='#ff6a2b';c.lineWidth=4;c.beginPath();c.moveTo(RIM_L.x,RIM_L.y);c.lineTo(BOARD,RIM_L.y);c.stroke();
+  if(!b.fly&&!this.drag&&running&&this.balls>0){c.fillStyle='#b4a6d4';c.font='13px "Noto Sans TC",sans-serif';c.textAlign='left';c.fillText('按住向後拉 → 放手',b.x-30,b.y+36)}
+  if(this.msg){c.globalAlpha=Math.min(1,this.msg.a);c.fillStyle='#f4b33d';c.font='bold 30px "LXGW WenKai TC",sans-serif';c.textAlign='center';c.fillText(this.msg.t,200,120);c.globalAlpha=1}}
+};
+
+/* ---------- 套圈圈 ---------- */
+const sAt=y=>clamp(.55+(y-170)/300*.5,.5,1.1);
+const Ring={name:'套圈圈',fee:50,rule:'撳一下鎖定方向，再撳一下鎖定力度。圈套中邊樣就贏邊樣：前排 1 張、中排 2 張、後排 4 張，正中🎁 10 張。8 個圈。',
+ init(){this.items=[];const rows=[{y:222,v:4,e:'🧸',n:5,gap:52},{y:300,v:2,e:'🦆',n:5,gap:64},{y:390,v:1,e:'🥤',n:5,gap:76}];
+  for(const r of rows)for(let i=0;i<r.n;i++){const big=r.v===4&&i===2;this.items.push({x:200+(i-2)*r.gap,y:r.y,s:sAt(r.y),v:big?10:r.v,e:big?'🎁':r.e,big,alive:1})}
+  this.rings=8;this.pts=0;this.won=0;this.t=0;this.phase='aim';this.ang=0;this.pw=0;this.fly=null;this.landed=[];this.msg=null;this.over=null;this.show()},
+ show(){hud(`剩 ${this.rings} 個圈　獎券 ${this.pts}`)},
+ down(){if(this.over!==null||this.rings<=0)return;
+  if(this.phase==='aim'){this.phase='power';this.pt=0}
+  else if(this.phase==='power'){this.phase='fly';const ty=470-this.pw*300+rand(-6,6),tx=200+Math.tan(this.ang)*(505-ty)*.9+rand(-6,6);this.fly={k:0,tx,ty};this.rings--;this.show()}},
+ update(dt){this.t+=dt;if(this.msg){this.msg.a-=dt;if(this.msg.a<=0)this.msg=null}
+  if(this.over!==null&&running){this.over-=dt;if(this.over<=0){this.over=null;endGame(this.pts,`8 個圈套中 ${this.won} 樣，得 ${this.pts} 張獎券`)}return}
+  if(this.phase==='aim')this.ang=Math.sin(this.t*1.9)*.5;
+  if(this.phase==='power'){this.pt+=dt;this.pw=(1-Math.cos(this.pt*3.2))/2}
+  if(this.phase==='fly'){const f=this.fly;f.k+=dt/.75;if(f.k>=1){f.k=1;let hit=null;
+    for(const it of this.items){if(!it.alive)continue;const d=hyp(f.tx-it.x,(f.ty-it.y)*1.7);if(d<(it.big?10:16)*it.s){hit=it;break}}
+    this.landed.push({x:f.tx,y:f.ty,hit:!!hit});
+    if(hit){hit.alive=0;this.pts+=hit.v;this.won++;this.msg={t:`套中 ${hit.e} +${hit.v}`,a:1.2}}else this.msg={t:'差少少…',a:.9};
+    this.fly=null;this.phase='aim';this.show();if(this.rings<=0)this.over=.9}}},
+ draw(c){c.fillStyle='#1d1636';c.fillRect(0,0,W,H);lights(c,this.t);
+  c.fillStyle='#e8483a';c.font='bold 22px "LXGW WenKai TC",sans-serif';c.textAlign='center';c.fillText('套中就係你嘅',200,100);
+  c.fillStyle='#3e2c20';c.beginPath();c.moveTo(118,170);c.lineTo(282,170);c.lineTo(400,520);c.lineTo(0,520);c.closePath();c.fill();
+  c.strokeStyle='#4f3929';c.lineWidth=1;for(let y=190;y<520;y+=y*.09){c.beginPath();c.moveTo(118-(y-170)*.337,y);c.lineTo(282+(y-170)*.337,y);c.stroke()}
+  for(const it of this.items){if(!it.alive)continue;c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(it.x,it.y,20*it.s,7*it.s,0,0,7);c.fill();
+   c.font=`${Math.round(34*it.s)}px sans-serif`;c.textAlign='center';c.textBaseline='alphabetic';c.fillText(it.e,it.x,it.y);
+   c.fillStyle='#f4b33d';c.font=`bold ${Math.round(12*it.s+3)}px "Noto Sans TC",sans-serif`;c.fillText('×'+it.v,it.x,it.y+16*it.s)}
+  for(const l of this.landed){const s=sAt(l.y);c.strokeStyle=l.hit?'#5fd0a0':'#c46be0';c.lineWidth=4*s;c.beginPath();c.ellipse(l.x,l.y,18*s,7*s,0,0,7);c.stroke()}
+  const ox=200,oy=505;
+  if(this.phase==='aim'||this.phase==='power'){c.strokeStyle='#f6ead2';c.lineWidth=3;c.setLineDash([6,6]);c.beginPath();c.moveTo(ox,oy);c.lineTo(ox+Math.sin(this.ang)*110,oy-Math.cos(this.ang)*110);c.stroke();c.setLineDash([])}
+  c.fillStyle='#30255a';rr(c,370,190,18,280,9);c.fill();c.fillStyle=this.phase==='power'?'#e8483a':'#4b3b78';const ph=this.pw*272;rr(c,374,466-ph,10,ph,5);c.fill();
+  c.fillStyle='#b4a6d4';c.font='12px "Noto Sans TC",sans-serif';c.textAlign='center';c.fillText('力度',379,486);
+  for(let i=0;i<this.rings;i++){c.strokeStyle='#c46be0';c.lineWidth=4;c.beginPath();c.ellipse(32,500-i*8,18,6,0,0,7);c.stroke()}
+  if(this.fly){const f=this.fly,k=f.k,x=ox+(f.tx-ox)*k,y=oy+(f.ty-oy)*k-Math.sin(Math.PI*k)*140,s=1.1+(sAt(f.ty)-1.1)*k;c.strokeStyle='#c46be0';c.lineWidth=4*s;c.beginPath();c.ellipse(x,y,18*s,7*s,Math.sin(k*12)*.3,0,7);c.stroke()}
+  if(running&&this.phase!=='fly'&&this.over===null){c.fillStyle='#f6ead2';c.font='bold 14px "Noto Sans TC",sans-serif';c.textAlign='center';c.fillText(this.phase==='aim'?'撳一下：鎖定方向':'撳一下：鎖定力度',200,140)}
+  if(this.msg){c.globalAlpha=Math.min(1,this.msg.a);c.fillStyle='#f4b33d';c.font='bold 28px "LXGW WenKai TC",sans-serif';c.textAlign='center';c.fillText(this.msg.t,200,160);c.globalAlpha=1}}
+};
+
+/* ---------- 開攤整嘢食 ---------- */
+const RECIPES=[{n:'大雞排',p:80,i:['雞排','炸鍋','胡椒粉']},{n:'珍珠奶茶',p:55,i:['杯子','紅茶','珍珠','冰塊']},{n:'烤香腸',p:40,i:['香腸','烤架','蒜片']},{n:'蚵仔煎',p:70,i:['蚵仔','雞蛋','甜辣醬']},{n:'地瓜球',p:35,i:['地瓜粉','炸鍋','梅子粉']}];
+const ING=['雞排','香腸','蚵仔','雞蛋','地瓜粉','杯子','紅茶','珍珠','冰塊','炸鍋','烤架','胡椒粉','蒜片','甜辣醬','梅子粉'];
+const WHO=['阿伯','學生妹','上班族','觀光客','阿嬤','工程師','情侶','大叔'];
+const Cook={on:false,time:75,q:[],tray:[],earn:0,spawn:0,acc:0,
+ start(){Object.assign(this,{on:true,time:75,q:[],tray:[],earn:0,spawn:.5});$('cStart').disabled=true;this.render();log('開檔！客人嚟緊')},
+ update(dt){if(!this.on)return;this.time-=dt;this.spawn-=dt;
+  if(this.spawn<=0&&this.q.length<4){const r=RECIPES[Math.floor(Math.random()*RECIPES.length)],m=rand(22,30);this.q.push({r,who:WHO[Math.floor(Math.random()*WHO.length)],pat:m,max:m});this.spawn=rand(5,8)}
+  for(const c of this.q)c.pat-=dt;const before=this.q.length;this.q=this.q.filter(c=>c.pat>0);if(this.q.length<before)log('有客人等到唔耐煩走咗…');
+  this.acc+=dt;if(this.acc>.15){this.acc=0;this.render()}
+  if(this.time<=0){this.on=false;this.time=0;this.render();$('cStart').disabled=false;$('cStart').textContent='再開一晚';log(`收檔！今晚賺咗 NT$${this.earn}`)}},
+ render(){$('cTime').textContent=`營業時間 ${Math.ceil(this.time)} 秒`;$('cEarn').textContent=`今晚營收 NT$${this.earn}`;
+  $('queue').innerHTML=this.q.length?this.q.map((c,i)=>`<div class="cust${i?'':' first'}"><b>${c.who}</b>${c.r.n}<div class="bar"><i style="width:${Math.max(0,c.pat/c.max*100)}%;background:${c.pat/c.max<.3?'var(--lantern)':'var(--ok)'}"></i></div></div>`).join(''):'<span style="color:var(--muted);font-size:13px">'+(this.on?'等緊客人…':'未開檔')+'</span>';
+  const f=this.q[0],o=$('order');
+  if(f){const left=[...this.tray];o.innerHTML=`<h4>${f.who}要：${f.r.n}<span>NT$${f.r.p}</span></h4><div class="need">${f.r.i.map(x=>{const k=left.indexOf(x);if(k>=0){left.splice(k,1);return`<span class="got">${x}</span>`}return`<span>${x}</span>`}).join('')}</div>`}
+  else o.innerHTML=`<h4>${this.on?'暫時冇單':'撳「開檔」開始做生意'}</h4><div style="font-size:13px">每張單照住材料撳，揀齊就出餐。做得快有貼士。</div>`;
+  $('tray').textContent='托盤：'+(this.tray.length?this.tray.join(' + '):'空')},
+ add(x){if(!this.on)return;if(this.tray.length>=6)return;this.tray.push(x);this.render()},
+ serve(){const f=this.q[0];if(!this.on||!f)return;const o=$('order');
+  const ok=this.tray.length===f.r.i.length&&[...this.tray].sort().join()===[...f.r.i].sort().join();
+  if(ok){const tip=Math.round(f.pat/f.max*20),g=f.r.p+tip;S.nt+=g;this.earn+=g;save();purse();this.q.shift();log(`${f.r.n}出餐！收 NT$${f.r.p}${tip?`＋貼士 NT$${tip}`:''}`);o.classList.add('good');setTimeout(()=>o.classList.remove('good'),300)}
+  else{log('材料唔啱，客人搖頭，重新整過');o.classList.remove('bad');void o.offsetWidth;o.classList.add('bad')}
+  this.tray=[];this.render()}
+};
+$('ing').innerHTML=ING.map(x=>`<button data-i="${x}">${x}</button>`).join('');
+$('ing').addEventListener('click',e=>{const b=e.target.closest('button');if(b)Cook.add(b.dataset.i)});
+$('serve').onclick=()=>Cook.serve();$('dump').onclick=()=>{Cook.tray=[];Cook.render()};$('cStart').onclick=()=>Cook.start();
+
+/* ---------- 換獎品 ---------- */
+const PRIZES=[{id:'cat',n:'招財貓吊飾',e:'🐱',c:8},{id:'duck',n:'黃色小鴨',e:'🐤',c:15},{id:'tea',n:'珍奶抱枕',e:'🧋',c:30},{id:'dog',n:'柴犬公仔',e:'🐕',c:50},{id:'bear',n:'巨型熊熊',e:'🧸',c:100}];
+function renderShop(){$('prizes').innerHTML=PRIZES.map(p=>`<div class="prize"><div class="em">${p.e}</div><b>${p.n}</b><div class="cost">${p.c} 張獎券</div><div class="own">已有 ${S.prizes[p.id]||0} 件</div><button class="btn" data-p="${p.id}" ${S.tk<p.c?'disabled':''}>換</button></div>`).join('');
+ const sh=PRIZES.flatMap(p=>Array(S.prizes[p.id]||0).fill(p.e)).join('');$('shelf').textContent=sh||'—';}
+$('prizes').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(!b)return;const p=PRIZES.find(x=>x.id===b.dataset.p);if(S.tk<p.c)return;S.tk-=p.c;S.prizes[p.id]=(S.prizes[p.id]||0)+1;save();purse();renderShop();log(`換咗一個${p.n}！`)});
+
+/* ---------- 框架 ---------- */
+const GAMES={shoot:Shoot,hoop:Hoop,ring:Ring};
+let G=null,cur='',running=false;
+function overlay(t,txt,btn){$('oTitle').textContent=t;$('oText').textContent=txt;$('oBtn').textContent=btn;$('overlay').hidden=false}
+function pick(k){if(Cook.on&&k!=='cook'){log('攤檔做緊生意，收檔先再走啦');return}
+ cur=k;running=false;document.querySelectorAll('#stalls button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.g===k));
+ const isG=!!GAMES[k];$('board').hidden=!isG;$('cook').hidden=k!=='cook';$('shop').hidden=k!=='shop';
+ if(isG){G=GAMES[k];G.init();$('sTitle').textContent=G.name;$('sRule').textContent=G.rule;overlay(G.name,G.rule,`付 NT$${G.fee} 開始`)}
+ else{G=null;hud('');
+  if(k==='cook'){$('sTitle').textContent='開攤整嘢食';$('sRule').textContent='你係攤主！75 秒內照住客人張單揀材料，出餐收台幣。等太耐客人會走。';Cook.render()}
+  else{$('sTitle').textContent='換獎品';$('sRule').textContent='玩遊戲贏獎券，喺度換公仔。';renderShop()}}}
+function endGame(tk,txt){running=false;S.tk+=tk;save();purse();log(txt);overlay('完場',txt,`再玩一次 NT$${G.fee}`)}
+$('oBtn').onclick=()=>{if(!G)return;if(S.nt<G.fee){overlay('唔夠錢',`要 NT$${G.fee} 先玩得，去「開攤整嘢食」賺返啲台幣先啦。`,`付 NT$${G.fee} 開始`);return}
+ S.nt-=G.fee;save();purse();G.init();running=true;$('overlay').hidden=true;log('')};
+$('stalls').addEventListener('click',e=>{const b=e.target.closest('button');if(b)pick(b.dataset.g)});
+function pt(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H}}
+cv.addEventListener('pointerdown',e=>{if(!running||!G)return;e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}G.down&&G.down(pt(e))});
+cv.addEventListener('pointermove',e=>{if(running&&G&&G.move)G.move(pt(e))});
+cv.addEventListener('pointerup',e=>{if(running&&G&&G.up)G.up(pt(e))});
+let rs=0;$('reset').onclick=()=>{if(!rs){rs=1;$('reset').textContent='再撳一次確認重置';setTimeout(()=>{rs=0;$('reset').textContent='重新開始（NT$500）'},2500);return}
+ rs=0;S={nt:500,tk:0,prizes:{}};save();purse();$('reset').textContent='重新開始（NT$500）';Cook.on=false;$('cStart').disabled=false;pick(cur||'shoot');log('已重置，荷包返到 NT$500')};
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+ if(G){G.update(dt);G.draw(ctx)}Cook.update(dt);requestAnimationFrame(loop)}
+purse();pick('shoot');requestAnimationFrame(loop);
+</script>
+</body>
+</html>
