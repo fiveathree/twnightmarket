@@ -151,4 +151,4 @@
 - 撈金魚、彈珠台、打地鼠、夾公仔
 - 音效（要玩家撳過一下先可以播）
 - 開攤升級（例如多個炸鍋、加快出餐）
-- 用 GitHub Pages 或 Cloudflare Pages 公開網址
+- ✅ 已經用 GitHub Pages 上線：https://fiveathree.github.io/twnightmarket/
